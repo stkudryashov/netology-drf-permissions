@@ -29,7 +29,14 @@ class AdvertisementSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """Метод для создания"""
 
-        validated_data["creator"] = self.context["request"].user
+        creator = self.context["request"].user
+        validated_data["creator"] = creator
+
+        count_open = Advertisement.objects.filter(creator=creator, status='OPEN').count()
+
+        if count_open >= 10:
+            raise ValidationError({'detail': 'Too Many Open Advertisement (max count 10)'})
+
         return super().create(validated_data)
 
     def validate(self, data):
@@ -38,7 +45,8 @@ class AdvertisementSerializer(serializers.ModelSerializer):
         creator = self.context["request"].user
         count_open = Advertisement.objects.filter(creator=creator, status='OPEN').count()
 
-        if count_open > 10:
-            raise ValidationError({'detail': 'Too Many Open Advertisement (max count 10)'})
+        if data.get('status', '') == 'OPEN':
+            if count_open >= 10:
+                raise ValidationError({'detail': 'Too Many Open Advertisement (max count 10)'})
 
         return data
